@@ -3,66 +3,145 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>チャイモン</title>
+  <title>授業通知スケジューラー</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2196F3">
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   <style>
-    * { box-sizing: border-box; }
+    :root {
+      --bg-primary: #f5f5f5;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f8f9fa;
+      --text-primary: #333333;
+      --text-secondary: #666666;
+      --border-color: #dddddd;
+      --accent-color: #2196F3;
+      --accent-hover: #1976D2;
+      --success-bg: #d4edda;
+      --success-text: #155724;
+      --success-border: #c3e6cb;
+      --error-bg: #f8d7da;
+      --error-text: #721c24;
+      --error-border: #f5c6cb;
+      --install-bg: #e3f2fd;
+      --shadow: rgba(0,0,0,0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #121212;
+      --bg-secondary: #1e1e1e;
+      --bg-tertiary: #2d2d2d;
+      --text-primary: #ffffff;
+      --text-secondary: #cccccc;
+      --border-color: #404040;
+      --accent-color: #64b5f6;
+      --accent-hover: #42a5f5;
+      --success-bg: #1b5e20;
+      --success-text: #a5d6a7;
+      --success-border: #2e7d32;
+      --error-bg: #b71c1c;
+      --error-text: #ffcdd2;
+      --error-border: #d32f2f;
+      --install-bg: #1565c0;
+      --shadow: rgba(0,0,0,0.3);
+    }
+
+    * { 
+      box-sizing: border-box; 
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
       padding: 20px;
-      background-color: #f5f5f5;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
     }
+
     #app {
       max-width: 1000px;
       margin: 0 auto;
-      background: white;
+      background: var(--bg-secondary);
       padding: 20px;
       border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 10px var(--shadow);
     }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px var(--shadow);
+      z-index: 1000;
+    }
+
+    .theme-toggle:hover {
+      background: var(--accent-hover);
+      transform: scale(1.1);
+    }
+
     h1 {
-      color: #2196F3;
+      color: var(--accent-color);
       text-align: center;
       margin-bottom: 30px;
     }
+
     table {
       border-collapse: collapse;
       width: 100%;
       margin-bottom: 20px;
+      background: var(--bg-secondary);
     }
+
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-color);
       padding: 8px;
       text-align: center;
     }
+
     th {
-      background-color: #2196F3;
+      background-color: var(--accent-color);
       color: white;
       font-weight: bold;
     }
+
     .checkbox-group {
       display: flex;
       flex-direction: column;
       gap: 4px;
     }
+
     .checkbox-group label {
       font-size: 12px;
       display: flex;
       align-items: center;
       gap: 4px;
+      color: var(--text-secondary);
     }
+
     .note {
       margin-top: 20px;
       padding: 15px;
-      background-color: #f8f9fa;
+      background-color: var(--bg-tertiary);
       border-radius: 6px;
-      border-left: 4px solid #2196F3;
+      border-left: 4px solid var(--accent-color);
     }
+
     button {
-      background-color: #2196F3;
+      background-color: var(--accent-color);
       color: white;
       border: none;
       padding: 10px 20px;
@@ -70,62 +149,121 @@
       cursor: pointer;
       font-size: 14px;
       margin-top: 10px;
+      transition: all 0.3s ease;
     }
+
     button:hover:not(:disabled) {
-      background-color: #1976D2;
+      background-color: var(--accent-hover);
+      transform: translateY(-1px);
     }
+
     button:disabled {
-      background-color: #ccc;
+      background-color: #666;
       cursor: not-allowed;
+      opacity: 0.6;
     }
+
     .install-prompt {
-      background-color: #e3f2fd;
-      border: 1px solid #2196F3;
+      background-color: var(--install-bg);
+      border: 1px solid var(--accent-color);
       border-radius: 6px;
       padding: 15px;
       margin-bottom: 20px;
       text-align: center;
+      color: var(--text-primary);
     }
+
     .install-prompt button {
       background-color: #4caf50;
       margin-left: 10px;
     }
+
     .install-prompt button:hover {
       background-color: #45a049;
     }
+
     .status {
       margin-top: 10px;
       padding: 10px;
       border-radius: 4px;
       font-size: 14px;
     }
+
     .status.success {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
+      background-color: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid var(--success-border);
     }
+
     .status.error {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
+      background-color: var(--error-bg);
+      color: var(--error-text);
+      border: 1px solid var(--error-border);
     }
+
+    input[type="checkbox"] {
+      accent-color: var(--accent-color);
+    }
+
+    label {
+      color: var(--text-primary);
+    }
+
     @media (max-width: 768px) {
       body { padding: 10px; }
       #app { padding: 15px; }
       table { font-size: 12px; }
       th, td { padding: 6px; }
+      .theme-toggle {
+        top: 10px;
+        right: 10px;
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+      }
+    }
+
+    /* スムーズなテーマ切替アニメーション */
+    html {
+      transition: color-scheme 0.3s ease;
+    }
+
+    /* システムのダークモード設定を自動検出 */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg-primary: #121212;
+        --bg-secondary: #1e1e1e;
+        --bg-tertiary: #2d2d2d;
+        --text-primary: #ffffff;
+        --text-secondary: #cccccc;
+        --border-color: #404040;
+        --accent-color: #64b5f6;
+        --accent-hover: #42a5f5;
+        --success-bg: #1b5e20;
+        --success-text: #a5d6a7;
+        --success-border: #2e7d32;
+        --error-bg: #b71c1c;
+        --error-text: #ffcdd2;
+        --error-border: #d32f2f;
+        --install-bg: #1565c0;
+        --shadow: rgba(0,0,0,0.3);
+      }
     }
   </style>
 </head>
 <body>
+  <button class="theme-toggle" @click="toggleTheme" :title="currentTheme === 'dark' ? 'ライトモードに切替' : 'ダークモードに切替'">
+    {{ currentTheme === 'dark' ? '☀️' : '🌙' }}
+  </button>
+
   <div id="app">
     <div v-if="showInstallPrompt" class="install-prompt">
-      <span>📱 この「チャイモン」をホーム画面に追加できます</span>
+      <span>📱 この授業スケジューラーをホーム画面に追加できます</span>
       <button @click="installPWA">インストール</button>
       <button @click="dismissInstallPrompt" style="background-color: #ccc;">後で</button>
     </div>
 
-    <h1>📚 チャイモン</h1>
+    <h1>📚 授業通知スケジューラー</h1>
     
     <div v-if="statusMessage" :class="['status', statusType]">
       {{ statusMessage }}
@@ -229,11 +367,14 @@
           notificationStarted: false,
           showInstallPrompt: false,
           statusMessage: '',
-          statusType: 'success'
+          statusType: 'success',
+          currentTheme: this.getInitialTheme()
         }
       },
       created() {
         this.loadSchedule()
+        this.applyTheme()
+        this.watchSystemTheme()
         window.vueApp = this // グローバル参照用
       },
       watch: {
@@ -245,31 +386,77 @@
         },
         notifyBefore5Min() {
           this.saveSchedule()
+        },
+        currentTheme() {
+          this.applyTheme()
+          this.saveTheme()
         }
       },
       methods: {
-        loadSchedule() {
-          try {
-            const saved = localStorage.getItem('lessonSchedule')
-            if (saved) {
-              const data = JSON.parse(saved)
-              this.schedule = data.schedule || this.schedule
-              this.notifyBefore5Min = data.notifyBefore5Min || false
-            }
-          } catch (e) {
-            console.error('スケジュール読み込みエラー:', e)
+        getInitialTheme() {
+          // 保存されたテーマを取得
+          const savedTheme = localStorage.getItem('theme')
+          if (savedTheme) {
+            return savedTheme
+          }
+          
+          // システム設定を確認
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            return 'dark'
+          }
+          
+          return 'light'
+        },
+        applyTheme() {
+          document.documentElement.setAttribute('data-theme', this.currentTheme)
+          // PWAのテーマカラーも更新
+          const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+          if (themeColorMeta) {
+            themeColorMeta.content = this.currentTheme === 'dark' ? '#1e1e1e' : '#2196F3'
           }
         },
-        saveSchedule() {
-          try {
-            const data = {
-              schedule: this.schedule,
-              notifyBefore5Min: this.notifyBefore5Min
-            }
-            localStorage.setItem('lessonSchedule', JSON.stringify(data))
-          } catch (e) {
-            console.error('スケジュール保存エラー:', e)
+        saveTheme() {
+          localStorage.setItem('theme', this.currentTheme)
+        },
+        toggleTheme() {
+          this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light'
+          this.showStatus(`${this.currentTheme === 'dark' ? 'ダーク' : 'ライト'}モードに切り替えました`, 'success')
+        },
+        watchSystemTheme() {
+          // システムのテーマ変更を監視
+          if (window.matchMedia) {
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+            mediaQuery.addEventListener('change', (e) => {
+              // 手動設定していない場合のみシステム設定に従う
+              const savedTheme = localStorage.getItem('theme')
+              if (!savedTheme) {
+                this.currentTheme = e.matches ? 'dark' : 'light'
+              }
+            })
           }
+        },
+        loadSchedule() {
+            try {
+              const saved = localStorage.getItem('lessonSchedule')
+              if (saved) {
+                const data = JSON.parse(saved)
+                this.schedule = data.schedule || this.schedule
+                this.notifyBefore5Min = data.notifyBefore5Min || false
+              }
+            } catch (e) {
+              console.error('スケジュール読み込みエラー:', e)
+            }
+          },
+          saveSchedule() {
+            try {
+              const data = {
+                schedule: this.schedule,
+                notifyBefore5Min: this.notifyBefore5Min
+              }
+              localStorage.setItem('lessonSchedule', JSON.stringify(data))
+            } catch (e) {
+              console.error('スケジュール保存エラー:', e)
+            }
         },
         showStatus(message, type = 'success') {
           this.statusMessage = message
@@ -321,7 +508,7 @@
           this.notificationStarted = true
           this.showStatus('通知が開始されました', 'success')
           this.checkTimeAndNotify()
-          setInterval(this.checkTimeAndNotify, 5000) // 5秒ごとにチェック
+          setInterval(this.checkTimeAndNotify, 60000) // 1分ごとにチェック
         },
         checkTimeAndNotify() {
           const now = new Date()
