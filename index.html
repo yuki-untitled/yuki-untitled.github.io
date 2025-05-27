@@ -302,6 +302,19 @@
         <li>授業終了時に通知が欲しい場合は「終」にもチェックを入れてください</li>
       </ul>
       
+      <div style="margin: 15px 0; padding: 15px; background-color: var(--bg-tertiary); border-radius: 6px;">
+        <p><strong>🚀 一括設定：</strong></p>
+        <button @click="setAllStart" style="background-color: #4caf50; margin-right: 10px;">
+          📚 全て授業開始のみ
+        </button>
+        <button @click="setAllEnd" style="background-color: #ff9800; margin-right: 10px;">
+          ✅ 全て授業終了のみ
+        </button>
+        <button @click="clearAll" style="background-color: #f44336;">
+          🗑️ 全てクリア
+        </button>
+      </div>
+      
       <label>
         <input type="checkbox" v-model="notifyBefore5Min">
         🔔 5分前通知を有効にする
@@ -313,7 +326,11 @@
       </button>
       
       <button @click="testNotification" style="background-color: #ff9800; margin-left: 10px;">
-        🧪 通知テスト
+        🧪 通知テスト（即座）
+      </button>
+      
+      <button @click="testDelayedNotification" style="background-color: #9c27b0; margin-left: 10px;">
+        ⏰ 1分後通知テスト
       </button>
     </div>
   </div>
@@ -525,10 +542,52 @@
             this.showStatus('通知がブロックされています。ブラウザの設定をご確認ください。', 'error');
           }
         },
+        setAllStart() {
+          this.schedule.forEach(periodRow => {
+            periodRow.forEach(daySlot => {
+              daySlot.start = true;
+              daySlot.end = false;
+            });
+          });
+          this.showStatus('全ての時間帯で授業開始通知を設定しました', 'success');
+        },
+        setAllEnd() {
+          this.schedule.forEach(periodRow => {
+            periodRow.forEach(daySlot => {
+              daySlot.start = false;
+              daySlot.end = true;
+            });
+          });
+          this.showStatus('全ての時間帯で授業終了通知を設定しました', 'success');
+        },
+        clearAll() {
+          this.schedule.forEach(periodRow => {
+            periodRow.forEach(daySlot => {
+              daySlot.start = false;
+              daySlot.end = false;
+            });
+          });
+          this.showStatus('全ての設定をクリアしました', 'success');
+        },
         testNotification() {
           if (Notification.permission === 'granted') {
             this.sendNotification('🧪 テスト通知: 通知機能が正常に動作しています');
             this.showStatus('テスト通知を送信しました', 'success');
+          } else {
+            this.showStatus('通知許可が必要です', 'error');
+          }
+        },
+        testDelayedNotification() {
+          if (Notification.permission === 'granted') {
+            const now = new Date();
+            const testTime = new Date(now.getTime() + 60000); // 1分後
+            const timeStr = `${String(testTime.getHours()).padStart(2, '0')}:${String(testTime.getMinutes()).padStart(2, '0')}`;
+            
+            this.showStatus(`1分後（${timeStr}）に通知テストを実行します`, 'success');
+            
+            setTimeout(() => {
+              this.sendNotification('⏰ 1分後通知テスト: 時間通知機能が正常に動作しています');
+            }, 60000);
           } else {
             this.showStatus('通知許可が必要です', 'error');
           }
