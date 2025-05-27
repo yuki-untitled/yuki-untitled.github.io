@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>授業通知スケジューラー</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#2196F3">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    #app {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2196F3;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #2196F3;
+      color: white;
+      font-weight: bold;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .checkbox-group label {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .note {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #2196F3;
+    }
+    button {
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    button:hover:not(:disabled) {
+      background-color: #1976D2;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    .install-prompt {
+      background-color: #e3f2fd;
+      border: 1px solid #2196F3;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .install-prompt button {
+      background-color: #4caf50;
+      margin-left: 10px;
+    }
+    .install-prompt button:hover {
+      background-color: #45a049;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .status.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      #app { padding: 15px; }
+      table { font-size: 12px; }
+      th, td { padding: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div v-if="showInstallPrompt" class="install-prompt">
+      <span>📱 この授業スケジューラーをホーム画面に追加できます</span>
+      <button @click="installPWA">インストール</button>
+      <button @click="dismissInstallPrompt" style="background-color: #ccc;">後で</button>
+    </div>
+
+    <h1>📚 授業通知スケジューラー</h1>
+    
+    <div v-if="statusMessage" :class="['status', statusType]">
+      {{ statusMessage }}
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>時限</th>
+          <th v-for="day in days" :key="day">{{ day }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(period, pIndex) in periods" :key="period.label">
+          <th>{{ period.label }}<br><small>({{ period.start }}〜{{ period.end }})</small></th>
+          <td v-for="(day, dIndex) in days" :key="day">
+            <div class="checkbox-group">
+              <label>
+                <input type="checkbox" v-model="schedule[pIndex][dIndex].start">
+                始
+              </label>
+              <label>
+                <input type="checkbox" v-model="schedule[pIndex][dIndex].end">
+                終
+              </label>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <p><strong>💡 使い方：</strong></p>
+      <ul>
+        <li>授業がある時間帯の「始」にチェックを入れてください</li>
+        <li>授業終了時に通知が欲しい場合は「終」にもチェックを入れてください</li>
+      </ul>
+      
+      <label>
+        <input type="checkbox" v-model="notifyBefore5Min">
+        🔔 5分前通知を有効にする
+      </label>
+      <br><br>
+      
+      <button @click="startNotification" :disabled="notificationStarted">
+        {{ notificationStarted ? '✅ 通知開始済み' : '🔔 通知を開始' }}
+      </button>
+      
+      <button @click="testNotification" style="background-color: #ff9800; margin-left: 10px;">
+        🧪 通知テスト
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Service Worker登録
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js')
+          .then(function(registration) {
+            console.log('SW registered: ', registration);
+          })
+          .catch(function(registrationError) {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+
+    // PWAインストールプロンプト
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (window.vueApp) {
+        window.vueApp.showInstallPrompt = true;
+      }
+    });
+
+    // Vue.js アプリケーション
+    const vueApp = new Vue({
+      el: '#app',
+      data() {
+        const days = ['月', '火', '水', '木', '金']
+        const periods = [
+          { label: '1限', start: '08:50', end: '10:20' },
+          { label: '2限', start: '10:30', end: '12:00' },
+          { label: '3限', start: '13:00', end: '14:30' },
+          { label: '4限', start: '14:40', end: '16:10' },
+          { label: '5限', start: '16:20', end: '17:50' },
+          { label: '6限', start: '18:00', end: '19:30' }
+        ]
+        const schedule = periods.map(() =>
+          days.map(() => ({ start: false, end: false }))
+        )
+
+        return {
+          days,
+          periods,
+          schedule,
+          notifyBefore5Min: false,
+          notificationStarted: false,
+          showInstallPrompt: false,
+          statusMessage: '',
+          statusType: 'success'
+        }
+      },
+      created() {
+        this.loadSchedule()
+        window.vueApp = this // グローバル参照用
+      },
+      watch: {
+        schedule: {
+          handler() {
+            this.saveSchedule()
+          },
+          deep: true
+        },
+        notifyBefore5Min() {
+          this.saveSchedule()
+        }
+      },
+      methods: {
+        loadSchedule() {
+          try {
+            const saved = localStorage.getItem('lessonSchedule')
+            if (saved) {
+              const data = JSON.parse(saved)
+              this.schedule = data.schedule || this.schedule
+              this.notifyBefore5Min = data.notifyBefore5Min || false
+            }
+          } catch (e) {
+            console.error('スケジュール読み込みエラー:', e)
+          }
+        },
+        saveSchedule() {
+          try {
+            const data = {
+              schedule: this.schedule,
+              notifyBefore5Min: this.notifyBefore5Min
+            }
+            localStorage.setItem('lessonSchedule', JSON.stringify(data))
+          } catch (e) {
+            console.error('スケジュール保存エラー:', e)
+          }
+        },
+        showStatus(message, type = 'success') {
+          this.statusMessage = message
+          this.statusType = type
+          setTimeout(() => {
+            this.statusMessage = ''
+          }, 3000)
+        },
+        async installPWA() {
+          if (deferredPrompt) {
+            deferredPrompt.prompt()
+            const { outcome } = await deferredPrompt.userChoice
+            if (outcome === 'accepted') {
+              this.showStatus('アプリがインストールされました！', 'success')
+            }
+            deferredPrompt = null
+            this.showInstallPrompt = false
+          }
+        },
+        dismissInstallPrompt() {
+          this.showInstallPrompt = false
+        },
+        startNotification() {
+          if (this.notificationStarted) return
+
+          if (Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                this.beginInterval()
+              } else {
+                this.showStatus('通知が許可されませんでした', 'error')
+              }
+            })
+          } else if (Notification.permission === 'granted') {
+            this.beginInterval()
+          } else {
+            this.showStatus('通知がブロックされています。ブラウザの設定をご確認ください。', 'error')
+          }
+        },
+        testNotification() {
+          if (Notification.permission === 'granted') {
+            this.sendNotification('🧪 テスト通知: 通知機能が正常に動作しています')
+            this.showStatus('テスト通知を送信しました', 'success')
+          } else {
+            this.showStatus('通知許可が必要です', 'error')
+          }
+        },
+        beginInterval() {
+          this.notificationStarted = true
+          this.showStatus('通知が開始されました', 'success')
+          this.checkTimeAndNotify()
+          setInterval(this.checkTimeAndNotify, 60000) // 1分ごとにチェック
+        },
+        checkTimeAndNotify() {
+          const now = new Date()
+          const currentDay = now.getDay() - 1 // 0=月, 4=金
+          if (currentDay < 0 || currentDay > 4) return // 土日は除外
+
+          const pad = num => num.toString().padStart(2, '0')
+          const hh = pad(now.getHours())
+          const mm = pad(now.getMinutes())
+          const currentTime = `${hh}:${mm}`
+
+          this.periods.forEach((period, pIndex) => {
+            const startTime = this.notifyBefore5Min ? this.adjustTime(period.start, -5) : period.start
+            const endTime = period.end
+
+            if (currentTime === startTime && this.schedule[pIndex][currentDay].start) {
+              const message = this.notifyBefore5Min 
+                ? `🔔 ${period.label}の授業が5分後に始まります`
+                : `🔔 ${period.label}の授業が始まります`
+              this.sendNotification(message)
+            }
+            if (currentTime === endTime && this.schedule[pIndex][currentDay].end) {
+              this.sendNotification(`✅ ${period.label}の授業が終了します`)
+            }
+          })
+        },
+        adjustTime(timeStr, minutesDiff) {
+          const [h, m] = timeStr.split(':').map(Number)
+          const date = new Date()
+          date.setHours(h)
+          date.setMinutes(m + minutesDiff)
+          return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+        },
+        sendNotification(message) {
+          try {
+            new Notification(message, {
+              icon: './images/icon.jpg',
+              badge: './images/icon.jpg',
+              tag: 'lesson-notification',
+              requireInteraction: false,
+              silent: false
+            })
+          } catch (e) {
+            console.error('通知送信エラー:', e)
+          }
+        }
+      }
+    })
+  </script>
+</body>
+</html>
