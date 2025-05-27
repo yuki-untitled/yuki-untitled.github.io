@@ -596,7 +596,7 @@
           this.notificationStarted = true;
           this.showStatus('通知が開始されました', 'success');
           this.checkTimeAndNotify();
-          setInterval(this.checkTimeAndNotify, 60000); // 1分ごとにチェック
+          setInterval(this.checkTimeAndNotify, 5000); // 5秒ごとにチェック
         },
         checkTimeAndNotify() {
           const now = new Date();
