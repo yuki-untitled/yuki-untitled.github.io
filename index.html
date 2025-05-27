@@ -422,13 +422,21 @@
           showInstallPrompt: false,
           statusMessage: '',
           statusType: 'success',
-          currentTheme: initialTheme
+          currentTheme: initialTheme,
+          testNotificationTime: null,
+          testCheckInterval: null
         };
       },
       created() {
         this.loadSchedule();
         this.watchSystemTheme();
         window.vueApp = this; // グローバル参照用
+      },
+      beforeDestroy() {
+        // コンポーネント破棄時にインターバルをクリア
+        if (this.testCheckInterval) {
+          clearInterval(this.testCheckInterval);
+        }
       },
       watch: {
         schedule: {
@@ -583,20 +591,55 @@
             const testTime = new Date(now.getTime() + 60000); // 1分後
             const timeStr = `${String(testTime.getHours()).padStart(2, '0')}:${String(testTime.getMinutes()).padStart(2, '0')}`;
             
-            this.showStatus(`1分後（${timeStr}）に通知テストを実行します`, 'success');
+            // 既存のテストがあればクリア
+            if (this.testCheckInterval) {
+              clearInterval(this.testCheckInterval);
+            }
             
+            this.testNotificationTime = testTime;
+            this.showStatus(`1分後（${timeStr}）に通知テストを実行します（5秒ごとチェック）`, 'success');
+            
+            // 5秒ごとにチェック開始
+            this.testCheckInterval = setInterval(() => {
+              this.checkTestNotification();
+            }, 5000);
+            
+            // 2分後に自動クリーンアップ（念のため）
             setTimeout(() => {
-              this.sendNotification('⏰ 1分後通知テスト: 時間通知機能が正常に動作しています');
-            }, 60000);
+              if (this.testCheckInterval) {
+                clearInterval(this.testCheckInterval);
+                this.testCheckInterval = null;
+                this.testNotificationTime = null;
+              }
+            }, 120000);
           } else {
             this.showStatus('通知許可が必要です', 'error');
+          }
+        },
+        checkTestNotification() {
+          if (!this.testNotificationTime) return;
+          
+          const now = new Date();
+          const targetTime = this.testNotificationTime;
+          
+          // 時刻が一致した場合（分単位で比較）
+          if (now.getHours() === targetTime.getHours() && 
+              now.getMinutes() === targetTime.getMinutes()) {
+            
+            this.sendNotification('⏰ 1分後通知テスト: 時間通知機能が正常に動作しています（5秒チェック）');
+            this.showStatus('1分後通知テストが実行されました！', 'success');
+            
+            // テスト完了後クリーンアップ
+            clearInterval(this.testCheckInterval);
+            this.testCheckInterval = null;
+            this.testNotificationTime = null;
           }
         },
         beginInterval() {
           this.notificationStarted = true;
           this.showStatus('通知が開始されました', 'success');
           this.checkTimeAndNotify();
-          setInterval(this.checkTimeAndNotify, 5000); // 5秒ごとにチェック
+          setInterval(this.checkTimeAndNotify, 60000); // 1分ごとにチェック
         },
         checkTimeAndNotify() {
           const now = new Date();
