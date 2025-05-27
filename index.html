@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>授業通知スケジューラー</title>
+  <title>チャイモン</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2196F3">
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
@@ -120,12 +120,12 @@
 <body>
   <div id="app">
     <div v-if="showInstallPrompt" class="install-prompt">
-      <span>📱 この授業スケジューラーをホーム画面に追加できます</span>
+      <span>📱 この「チャイモン」をホーム画面に追加できます</span>
       <button @click="installPWA">インストール</button>
       <button @click="dismissInstallPrompt" style="background-color: #ccc;">後で</button>
     </div>
 
-    <h1>📚 授業通知スケジューラー</h1>
+    <h1>📚 チャイモン</h1>
     
     <div v-if="statusMessage" :class="['status', statusType]">
       {{ statusMessage }}
@@ -321,7 +321,7 @@
           this.notificationStarted = true
           this.showStatus('通知が開始されました', 'success')
           this.checkTimeAndNotify()
-          setInterval(this.checkTimeAndNotify, 60000) // 1分ごとにチェック
+          setInterval(this.checkTimeAndNotify, 5000) // 5秒ごとにチェック
         },
         checkTimeAndNotify() {
           const now = new Date()

@@ -1,7 +1,7 @@
 {
-  "name": "授業通知スケジューラー",
-  "short_name": "授業スケジューラー",
-  "description": "大学の授業時間に合わせて通知を送信するPWAアプリ",
+  "name": "チャイモン",
+  "short_name": "チャイモン",
+  "description": "筑波技術大学の授業時間に合わせて通知を送信するPWAアプリ",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -32,8 +32,8 @@
   ],
   "shortcuts": [
     {
-      "name": "授業スケジュール",
-      "short_name": "スケジュール",
+      "name": "チャイモン",
+      "short_name": "チャイモン",
       "description": "授業スケジュールを確認・編集",
       "url": "./",
       "icons": [

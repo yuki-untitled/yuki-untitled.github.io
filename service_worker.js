@@ -133,7 +133,7 @@ self.addEventListener('push', function(event) {
   };
 
   event.waitUntil(
-    self.registration.showNotification('授業スケジューラー', options)
+    self.registration.showNotification('チャイモン', options)
   );
 });
 
