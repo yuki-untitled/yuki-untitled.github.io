@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>チャイモン</title>
+  <title>授業通知スケジューラー</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2196F3">
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
@@ -201,12 +201,56 @@
       border: 1px solid var(--error-border);
     }
 
+    .status.warning {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    [data-theme="dark"] .status.warning {
+      background-color: #8b6914;
+      color: #fff3cd;
+      border: 1px solid #b7791f;
+    }
+
     input[type="checkbox"] {
       accent-color: var(--accent-color);
     }
 
     label {
       color: var(--text-primary);
+    }
+
+    .background-info {
+      background-color: var(--bg-tertiary);
+      border: 2px solid var(--accent-color);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .background-info h3 {
+      margin-top: 0;
+      color: var(--accent-color);
+    }
+
+    .sw-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .sw-status.active {
+      background-color: var(--success-bg);
+      color: var(--success-text);
+    }
+
+    .sw-status.inactive {
+      background-color: var(--error-bg);
+      color: var(--error-text);
     }
 
     @media (max-width: 768px) {
@@ -258,12 +302,28 @@
     </button>
 
     <div v-if="showInstallPrompt" class="install-prompt">
-      <span>📱 この「チャイモン」をホーム画面に追加できます</span>
+      <span>📱 この授業スケジューラーをホーム画面に追加できます</span>
       <button @click="installPWA">インストール</button>
       <button @click="dismissInstallPrompt" style="background-color: #ccc;">後で</button>
     </div>
 
-    <h1>📚 チャイモン</h1>
+    <h1>📚 授業通知スケジューラー</h1>
+
+    <div class="background-info">
+      <h3>🔄 バックグラウンド動作状況</h3>
+      <p>
+        Service Worker: 
+        <span :class="['sw-status', serviceWorkerActive ? 'active' : 'inactive']">
+          {{ serviceWorkerActive ? 'アクティブ' : '非アクティブ' }}
+        </span>
+      </p>
+      <p v-if="serviceWorkerActive" style="font-size: 14px; color: var(--text-secondary);">
+        ✅ アプリを閉じても通知が動作します
+      </p>
+      <p v-else style="font-size: 14px; color: var(--error-text);">
+        ⚠️ バックグラウンド通知を有効にするには、通知を開始してください
+      </p>
+    </div>
     
     <div v-if="statusMessage" :class="['status', statusType]">
       {{ statusMessage }}
@@ -300,6 +360,7 @@
       <ul>
         <li>授業がある時間帯の「始」にチェックを入れてください</li>
         <li>授業終了時に通知が欲しい場合は「終」にもチェックを入れてください</li>
+        <li><strong>バックグラウンド動作：</strong> 通知開始後、アプリを閉じても通知が届きます</li>
       </ul>
       
       <div style="margin: 15px 0; padding: 15px; background-color: var(--bg-tertiary); border-radius: 6px;">
@@ -322,7 +383,11 @@
       <br><br>
       
       <button @click="startNotification" :disabled="notificationStarted">
-        {{ notificationStarted ? '✅ 通知開始済み' : '🔔 通知を開始' }}
+        {{ notificationStarted ? '✅ バックグラウンド通知開始済み' : '🔔 バックグラウンド通知を開始' }}
+      </button>
+      
+      <button @click="stopNotification" v-if="notificationStarted" style="background-color: #f44336; margin-left: 10px;">
+        🛑 通知を停止
       </button>
       
       <button @click="testNotification" style="background-color: #ff9800; margin-left: 10px;">
@@ -332,13 +397,149 @@
       <button @click="testDelayedNotification" style="background-color: #9c27b0; margin-left: 10px;">
         ⏰ 1分後通知テスト
       </button>
+
+      <div v-if="notificationStarted" style="margin-top: 15px; padding: 10px; background-color: var(--success-bg); border-radius: 6px;">
+        <p style="margin: 0; color: var(--success-text); font-weight: bold;">
+          🎯 バックグラウンド通知が有効です
+        </p>
+        <p style="margin: 5px 0 0 0; color: var(--success-text); font-size: 14px;">
+          アプリを閉じても、ブラウザを閉じても通知が届きます。<br>
+          スケジュール変更時は自動で Service Worker に同期されます。
+        </p>
+      </div>
     </div>
   </div>
 
   <script>
-    // テーマ関連のヘルパー関数を最初に定義
+    // Service Worker のコード（インライン定義）
+    const SERVICE_WORKER_CODE = `
+      const CACHE_NAME = 'lesson-scheduler-v1';
+      let scheduleData = null;
+      let notificationSettings = { notifyBefore5Min: false };
+
+      // インストール時
+      self.addEventListener('install', (event) => {
+        console.log('Service Worker installed');
+        self.skipWaiting();
+      });
+
+      // アクティベート時
+      self.addEventListener('activate', (event) => {
+        console.log('Service Worker activated');
+        event.waitUntil(self.clients.claim());
+        
+        // 定期チェック開始
+        startPeriodicCheck();
+      });
+
+      // メインアプリからのメッセージ受信
+      self.addEventListener('message', (event) => {
+        if (event.data.type === 'UPDATE_SCHEDULE') {
+          scheduleData = event.data.schedule;
+          notificationSettings = event.data.settings;
+          console.log('Schedule updated in Service Worker:', scheduleData);
+        } else if (event.data.type === 'START_NOTIFICATIONS') {
+          scheduleData = event.data.schedule;
+          notificationSettings = event.data.settings;
+          startPeriodicCheck();
+          console.log('Notifications started in Service Worker');
+        } else if (event.data.type === 'STOP_NOTIFICATIONS') {
+          stopPeriodicCheck();
+          console.log('Notifications stopped in Service Worker');
+        }
+      });
+
+      let checkInterval = null;
+
+      function startPeriodicCheck() {
+        if (checkInterval) clearInterval(checkInterval);
+        
+        // 30秒ごとにチェック（より頻繁に）
+        checkInterval = setInterval(() => {
+          checkTimeAndNotify();
+        }, 30000);
+        
+        // 即座に一度チェック
+        checkTimeAndNotify();
+      }
+
+      function stopPeriodicCheck() {
+        if (checkInterval) {
+          clearInterval(checkInterval);
+          checkInterval = null;
+        }
+      }
+
+      function checkTimeAndNotify() {
+        if (!scheduleData) return;
+
+        const now = new Date();
+        const currentDay = now.getDay() - 1; // 0=月, 4=金
+        if (currentDay < 0 || currentDay > 4) return; // 土日は除外
+
+        const periods = [
+          { label: '1限', start: '08:50', end: '10:20' },
+          { label: '2限', start: '10:30', end: '12:00' },
+          { label: '3限', start: '13:00', end: '14:30' },
+          { label: '4限', start: '14:40', end: '16:10' },
+          { label: '5限', start: '16:20', end: '17:50' },
+          { label: '6限', start: '18:00', end: '19:30' }
+        ];
+
+        const pad = num => num.toString().padStart(2, '0');
+        const hh = pad(now.getHours());
+        const mm = pad(now.getMinutes());
+        const currentTime = hh + ':' + mm;
+
+        periods.forEach((period, pIndex) => {
+          if (!scheduleData[pIndex] || !scheduleData[pIndex][currentDay]) return;
+
+          const startTime = notificationSettings.notifyBefore5Min ? 
+            adjustTime(period.start, -5) : period.start;
+          const endTime = period.end;
+
+          if (currentTime === startTime && scheduleData[pIndex][currentDay].start) {
+            const message = notificationSettings.notifyBefore5Min 
+              ? period.label + 'の授業が5分後に始まります'
+              : period.label + 'の授業が始まります';
+            sendNotification('🔔 ' + message);
+          }
+          if (currentTime === endTime && scheduleData[pIndex][currentDay].end) {
+            sendNotification('✅ ' + period.label + 'の授業が終了します');
+          }
+        });
+      }
+
+      function adjustTime(timeStr, minutesDiff) {
+        const parts = timeStr.split(':');
+        const h = parseInt(parts[0]);
+        const m = parseInt(parts[1]);
+        const date = new Date();
+        date.setHours(h);
+        date.setMinutes(m + minutesDiff);
+        const newH = String(date.getHours()).padStart(2, '0');
+        const newM = String(date.getMinutes()).padStart(2, '0');
+        return newH + ':' + newM;
+      }
+
+      function sendNotification(message) {
+        self.registration.showNotification(message, {
+          icon: './images/icon.jpg',
+          badge: './images/icon.jpg',
+          tag: 'lesson-notification-' + Date.now(),
+          requireInteraction: false,
+          silent: false,
+          timestamp: Date.now()
+        });
+      }
+    `;
+
+    // Service Worker のブロブURLを作成
+    const swBlob = new Blob([SERVICE_WORKER_CODE], { type: 'application/javascript' });
+    const swURL = URL.createObjectURL(swBlob);
+
+    // テーマ関連のヘルパー関数
     function getInitialTheme() {
-      // ブラウザ対応チェック
       if (typeof localStorage === 'undefined') {
         return 'light';
       }
@@ -352,7 +553,6 @@
         console.warn('localStorage access failed:', e);
       }
       
-      // システム設定を確認
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         return 'dark';
       }
@@ -362,26 +562,33 @@
 
     function applyTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
-      // PWAのテーマカラーも更新
       const themeColorMeta = document.querySelector('meta[name="theme-color"]');
       if (themeColorMeta) {
         themeColorMeta.content = theme === 'dark' ? '#1e1e1e' : '#2196F3';
       }
     }
 
-    // 初期テーマを適用
     const initialTheme = getInitialTheme();
     applyTheme(initialTheme);
 
     // Service Worker登録
+    let serviceWorkerRegistration = null;
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js')
+        navigator.serviceWorker.register(swURL)
           .then(function(registration) {
             console.log('SW registered: ', registration);
+            serviceWorkerRegistration = registration;
+            if (window.vueApp) {
+              window.vueApp.serviceWorkerActive = true;
+              window.vueApp.serviceWorkerRegistration = registration;
+            }
           })
           .catch(function(registrationError) {
             console.log('SW registration failed: ', registrationError);
+            if (window.vueApp) {
+              window.vueApp.serviceWorkerActive = false;
+            }
           });
       });
     }
@@ -424,16 +631,17 @@
           statusType: 'success',
           currentTheme: initialTheme,
           testNotificationTime: null,
-          testCheckInterval: null
+          testCheckInterval: null,
+          serviceWorkerActive: false,
+          serviceWorkerRegistration: null
         };
       },
       created() {
         this.loadSchedule();
         this.watchSystemTheme();
-        window.vueApp = this; // グローバル参照用
+        window.vueApp = this;
       },
       beforeDestroy() {
-        // コンポーネント破棄時にインターバルをクリア
         if (this.testCheckInterval) {
           clearInterval(this.testCheckInterval);
         }
@@ -442,11 +650,13 @@
         schedule: {
           handler() {
             this.saveSchedule();
+            this.syncWithServiceWorker();
           },
           deep: true
         },
         notifyBefore5Min() {
           this.saveSchedule();
+          this.syncWithServiceWorker();
         },
         currentTheme() {
           applyTheme(this.currentTheme);
@@ -454,6 +664,15 @@
         }
       },
       methods: {
+        syncWithServiceWorker() {
+          if (this.serviceWorkerRegistration && this.serviceWorkerRegistration.active) {
+            this.serviceWorkerRegistration.active.postMessage({
+              type: 'UPDATE_SCHEDULE',
+              schedule: this.schedule,
+              settings: { notifyBefore5Min: this.notifyBefore5Min }
+            });
+          }
+        },
         saveTheme() {
           try {
             if (typeof localStorage !== 'undefined') {
@@ -468,18 +687,15 @@
           this.showStatus(`${this.currentTheme === 'dark' ? 'ダーク' : 'ライト'}モードに切り替えました`, 'success');
         },
         watchSystemTheme() {
-          // システムのテーマ変更を監視
           if (window.matchMedia) {
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             mediaQuery.addEventListener('change', (e) => {
-              // 手動設定していない場合のみシステム設定に従う
               try {
                 const savedTheme = localStorage.getItem('theme');
                 if (!savedTheme) {
                   this.currentTheme = e.matches ? 'dark' : 'light';
                 }
               } catch (error) {
-                // localStorage使用不可の場合はシステム設定に従う
                 this.currentTheme = e.matches ? 'dark' : 'light';
               }
             });
@@ -493,6 +709,7 @@
                 const data = JSON.parse(saved);
                 this.schedule = data.schedule || this.schedule;
                 this.notifyBefore5Min = data.notifyBefore5Min || false;
+                this.notificationStarted = data.notificationStarted || false;
               }
             }
           } catch (e) {
@@ -504,7 +721,8 @@
             if (typeof localStorage !== 'undefined') {
               const data = {
                 schedule: this.schedule,
-                notifyBefore5Min: this.notifyBefore5Min
+                notifyBefore5Min: this.notifyBefore5Min,
+                notificationStarted: this.notificationStarted
               };
               localStorage.setItem('lessonSchedule', JSON.stringify(data));
             }
@@ -517,7 +735,7 @@
           this.statusType = type;
           setTimeout(() => {
             this.statusMessage = '';
-          }, 3000);
+          }, 4000);
         },
         async installPWA() {
           if (deferredPrompt) {
@@ -533,22 +751,51 @@
         dismissInstallPrompt() {
           this.showInstallPrompt = false;
         },
-        startNotification() {
+        async startNotification() {
           if (this.notificationStarted) return;
 
-          if (Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-              if (permission === 'granted') {
-                this.beginInterval();
-              } else {
-                this.showStatus('通知が許可されませんでした', 'error');
-              }
-            });
-          } else if (Notification.permission === 'granted') {
-            this.beginInterval();
-          } else {
-            this.showStatus('通知がブロックされています。ブラウザの設定をご確認ください。', 'error');
+          if (!this.serviceWorkerActive) {
+            this.showStatus('Service Workerが利用できません。ページを再読み込みしてください。', 'error');
+            return;
           }
+
+          if (Notification.permission === 'default') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+              this.showStatus('通知が許可されませんでした', 'error');
+              return;
+            }
+          } else if (Notification.permission !== 'granted') {
+            this.showStatus('通知がブロックされています。ブラウザの設定をご確認ください。', 'error');
+            return;
+          }
+
+          this.notificationStarted = true;
+          this.saveSchedule();
+          
+          // Service Workerに通知開始を伝える
+          if (this.serviceWorkerRegistration && this.serviceWorkerRegistration.active) {
+            this.serviceWorkerRegistration.active.postMessage({
+              type: 'START_NOTIFICATIONS',
+              schedule: this.schedule,
+              settings: { notifyBefore5Min: this.notifyBefore5Min }
+            });
+          }
+
+          this.showStatus('🎯 バックグラウンド通知が開始されました！アプリを閉じても通知が届きます。', 'success');
+        },
+        stopNotification() {
+          this.notificationStarted = false;
+          this.saveSchedule();
+          
+          // Service Workerに通知停止を伝える
+          if (this.serviceWorkerRegistration && this.serviceWorkerRegistration.active) {
+            this.serviceWorkerRegistration.active.postMessage({
+              type: 'STOP_NOTIFICATIONS'
+            });
+          }
+
+          this.showStatus('通知を停止しました', 'success');
         },
         setAllStart() {
           this.schedule.forEach(periodRow => {
@@ -597,14 +844,14 @@
             }
             
             this.testNotificationTime = testTime;
-            this.showStatus(`1分後（${timeStr}）に通知テストを実行します（5秒ごとチェック）`, 'success');
+            this.showStatus(`1分後（${timeStr}）に通知テストを実行します`, 'success');
             
-            // 5秒ごとにチェック開始
+            // 10秒ごとにチェック開始
             this.testCheckInterval = setInterval(() => {
               this.checkTestNotification();
-            }, 5000);
+            }, 10000);
             
-            // 2分後に自動クリーンアップ（念のため）
+            // 2分後に自動クリーンアップ
             setTimeout(() => {
               if (this.testCheckInterval) {
                 clearInterval(this.testCheckInterval);
@@ -626,7 +873,7 @@
           if (now.getHours() === targetTime.getHours() && 
               now.getMinutes() === targetTime.getMinutes()) {
             
-            this.sendNotification('⏰ 1分後通知テスト: 時間通知機能が正常に動作しています（5秒チェック）');
+            this.sendNotification('⏰ 1分後通知テスト: バックグラウンド通知機能が正常に動作しています');
             this.showStatus('1分後通知テストが実行されました！', 'success');
             
             // テスト完了後クリーンアップ
@@ -634,44 +881,6 @@
             this.testCheckInterval = null;
             this.testNotificationTime = null;
           }
-        },
-        beginInterval() {
-          this.notificationStarted = true;
-          this.showStatus('通知が開始されました', 'success');
-          this.checkTimeAndNotify();
-          setInterval(this.checkTimeAndNotify, 60000); // 1分ごとにチェック
-        },
-        checkTimeAndNotify() {
-          const now = new Date();
-          const currentDay = now.getDay() - 1; // 0=月, 4=金
-          if (currentDay < 0 || currentDay > 4) return; // 土日は除外
-
-          const pad = num => num.toString().padStart(2, '0');
-          const hh = pad(now.getHours());
-          const mm = pad(now.getMinutes());
-          const currentTime = `${hh}:${mm}`;
-
-          this.periods.forEach((period, pIndex) => {
-            const startTime = this.notifyBefore5Min ? this.adjustTime(period.start, -5) : period.start;
-            const endTime = period.end;
-
-            if (currentTime === startTime && this.schedule[pIndex][currentDay].start) {
-              const message = this.notifyBefore5Min 
-                ? `🔔 ${period.label}の授業が5分後に始まります`
-                : `🔔 ${period.label}の授業が始まります`;
-              this.sendNotification(message);
-            }
-            if (currentTime === endTime && this.schedule[pIndex][currentDay].end) {
-              this.sendNotification(`✅ ${period.label}の授業が終了します`);
-            }
-          });
-        },
-        adjustTime(timeStr, minutesDiff) {
-          const [h, m] = timeStr.split(':').map(Number);
-          const date = new Date();
-          date.setHours(h);
-          date.setMinutes(m + minutesDiff);
-          return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
         },
         sendNotification(message) {
           try {

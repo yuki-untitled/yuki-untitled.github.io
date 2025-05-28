@@ -4,12 +4,12 @@
   "description": "筑波技術大学の授業時間に合わせて通知を送信するPWAアプリ",
   "start_url": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "theme_color": "#2196F3",
   "background_color": "#ffffff",
+  "theme_color": "#2196F3",
+  "orientation": "portrait-primary",
   "scope": "./",
   "lang": "ja",
-  "categories": ["education", "productivity", "utilities"],
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "./images/icon.jpg",
@@ -30,12 +30,14 @@
       "purpose": "any maskable"
     }
   ],
+  "related_applications": [],
+  "prefer_related_applications": false,
   "shortcuts": [
     {
       "name": "チャイモン",
       "short_name": "チャイモン",
       "description": "授業スケジュールを確認・編集",
-      "url": "./",
+      "url": "./?shortcut=schedule",
       "icons": [
         {
           "src": "./images/icon-192.png",
