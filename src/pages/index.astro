@@ -1,0 +1,98 @@
+---
+// ここはフロントマター（JavaScriptを書く領域）です。
+const pageTitle = "iruka's Portfolio";
+
+// グローバルCSSの読み込み
+import '../styles/global.css';
+---
+
+<html lang="ja">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{pageTitle}</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+	</head>
+	<body class="bg-[#05070A] text-slate-300 font-['Inter',sans-serif] antialiased selection:bg-sky-500/30 overflow-x-hidden">
+
+		<div class="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#0C4A6E]/15 via-[#062F4F]/5 to-[#05070A] px-6 lg:px-12">
+			
+			<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#38BDF8]/5 rounded-full blur-[140px] pointer-events-none"></div>
+
+			<header class="w-full pt-8 max-w-7xl mx-auto flex justify-between items-center z-10">
+				<span class="text-xs font-semibold tracking-widest text-[#38BDF8]/60 uppercase">irulog.me</span>
+			</header>
+
+			<main class="w-full max-w-7xl mx-auto py-12 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8 z-10 my-auto">
+				
+				<div class="max-w-xl text-center lg:text-left">
+					<div class="w-16 h-16 text-[#38BDF8] mb-6 drop-shadow-[0_0_15px_rgba(56,189,248,0.5)] mx-auto lg:mx-0">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+							<path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 0 1 0 .656l-5.603 3.113a.375.375 0 0 1-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112Z" />
+						</svg>
+					</div>
+					<h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-tighter leading-none">
+						iruka's<br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-[#38BDF8]">Portfolio</span>
+					</h1>
+					<p class="mt-6 text-base md:text-lg text-slate-400 font-light max-w-md leading-relaxed">
+						深海の静寂と、青い光をまとったミニマルな空間。</br>必要な場所へ、ここから繋がります。
+					</p>
+				</div>
+
+				<div class="w-full lg:max-w-2xl flex flex-col gap-4">
+					
+					<a href="https://blog.irulog.me" target="_blank" rel="noopener noreferrer" 
+					   class="group block p-6 bg-[#111827]/20 backdrop-blur-md border border-slate-900/60 rounded-2xl transition-all duration-300 hover:border-[#38BDF8]/40 hover:bg-[#111827]/40 hover:shadow-[0_0_50px_-10px_rgba(56,189,248,0.15)] hover:-translate-y-0.5">
+						<div class="flex items-center justify-between">
+							<h3 class="text-lg font-semibold text-white group-hover:text-[#38BDF8] transition-colors">
+								Technical Blog
+							</h3>
+							<span class="text-slate-600 group-hover:text-[#38BDF8] transition-colors text-xs font-light">WordPress ↗</span>
+						</div>
+						<p class="mt-2 text-xs md:text-sm text-slate-400 font-light leading-relaxed">
+							YouTubeと連動したブログや、詳しく載せたいものをまとめています。
+						</p>
+					</a>
+
+					<a href="https://note.irulog.me" target="_blank" rel="noopener noreferrer" 
+					   class="group block p-6 bg-[#111827]/20 backdrop-blur-md border border-slate-900/60 rounded-2xl transition-all duration-300 hover:border-[#38BDF8]/40 hover:bg-[#111827]/40 hover:shadow-[0_0_50px_-10px_rgba(56,189,248,0.15)] hover:-translate-y-0.5">
+						<div class="flex items-center justify-between">
+							<h3 class="text-lg font-semibold text-white group-hover:text-[#38BDF8] transition-colors">
+								Technical Blog
+							</h3>
+							<span class="text-slate-600 group-hover:text-[#38BDF8] transition-colors text-xs font-light">Grav ↗</span>
+						</div>
+						<p class="mt-2 text-xs md:text-sm text-slate-400 font-light leading-relaxed">
+							日々の技術的な知見や、開発環境の備忘録をディープに綴っています。
+						</p>
+					</a>
+
+					<a href="https://www.youtube.com/@irulog" target="_blank" rel="noopener noreferrer" 
+					   class="group block p-6 bg-[#111827]/20 backdrop-blur-md border border-slate-900/60 rounded-2xl transition-all duration-300 hover:border-[#38BDF8]/40 hover:bg-[#111827]/40 hover:shadow-[0_0_50px_-10px_rgba(56,189,248,0.15)] hover:-translate-y-0.5">
+						<div class="flex items-center justify-between">
+							<h3 class="text-lg font-semibold text-white group-hover:text-[#38BDF8] transition-colors">
+								YouTube Channel
+							</h3>
+							<span class="text-slate-600 group-hover:text-[#38BDF8] transition-colors text-xs font-light">YouTube ↗</span>
+						</div>
+						<p class="mt-2 text-xs md:text-sm text-slate-400 font-light leading-relaxed">
+							主にボイスロイドドライブPOV動画をアップしています。
+						</p>
+					</a>
+
+				</div>
+			</main>
+
+			<footer class="w-full py-8 text-center text-[10px] text-slate-600 tracking-widest z-10 border-t border-slate-900/30">
+				&copy; 2026 iruka. All rights reserved.
+			</footer>
+
+		</div>
+
+	</body>
+</html>
