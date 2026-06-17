@@ -46,26 +46,26 @@ import '../styles/global.css';
 
 				<div class="w-full lg:max-w-2xl flex flex-col gap-4">
 					
-					<a href="https://blog.irulog.me" target="_blank" rel="noopener noreferrer" 
+					<a id="blog-link" href="https://blog.irulog.me" target="_blank" rel="noopener noreferrer" 
 					   class="group block p-6 bg-[#111827]/20 backdrop-blur-md border border-slate-900/60 rounded-2xl transition-all duration-300 hover:border-[#38BDF8]/40 hover:bg-[#111827]/40 hover:shadow-[0_0_50px_-10px_rgba(56,189,248,0.15)] hover:-translate-y-0.5">
 						<div class="flex items-center justify-between">
 							<h3 class="text-lg font-semibold text-white group-hover:text-[#38BDF8] transition-colors">
 								Technical Blog
 							</h3>
-							<span class="text-slate-600 group-hover:text-[#38BDF8] transition-colors text-xs font-light">WordPress ↗</span>
+							<span id="blog-status" class="text-slate-600 group-hover:text-[#38BDF8] transition-colors text-xs font-light">WordPress ↗</span>
 						</div>
 						<p class="mt-2 text-xs md:text-sm text-slate-400 font-light leading-relaxed">
 							YouTubeと連動したブログや、詳しく載せたいものをまとめています。
 						</p>
 					</a>
 
-					<a href="https://note.irulog.me" target="_blank" rel="noopener noreferrer" 
+					<a id="note-link" href="https://note.irulog.me" target="_blank" rel="noopener noreferrer" 
 					   class="group block p-6 bg-[#111827]/20 backdrop-blur-md border border-slate-900/60 rounded-2xl transition-all duration-300 hover:border-[#38BDF8]/40 hover:bg-[#111827]/40 hover:shadow-[0_0_50px_-10px_rgba(56,189,248,0.15)] hover:-translate-y-0.5">
 						<div class="flex items-center justify-between">
 							<h3 class="text-lg font-semibold text-white group-hover:text-[#38BDF8] transition-colors">
 								Technical Blog
 							</h3>
-							<span class="text-slate-600 group-hover:text-[#38BDF8] transition-colors text-xs font-light">Grav ↗</span>
+							<span id="note-status" class="text-slate-600 group-hover:text-[#38BDF8] transition-colors text-xs font-light">Grav ↗</span>
 						</div>
 						<p class="mt-2 text-xs md:text-sm text-slate-400 font-light leading-relaxed">
 							日々の技術的な知見や、開発環境の備忘録をディープに綴っています。
@@ -93,6 +93,49 @@ import '../styles/global.css';
 			</footer>
 
 		</div>
+
+		<script>
+			async function checkServerStatus(url, linkId, statusId, defaultText) {
+				const linkEl = document.getElementById(linkId);
+				const statusEl = document.getElementById(statusId);
+				if (!linkEl || !statusEl) return;
+
+				try {
+					// 3秒でタイムアウトさせる設定
+					const controller = new AbortController();
+					const timeout = setTimeout(() => controller.abort(), 3000);
+
+					const response = await fetch(url, { 
+						method: 'HEAD',
+						mode: 'no-cors',
+						signal: controller.signal
+					});
+
+					clearTimeout(timeout);
+
+					if (!response.ok) throw new Error('Offline');
+					
+					// 稼働中の場合：元のテキスト（WordPress ↗ など）のままにする
+
+				} catch (error) {
+					// 停電・メンテナンス等の場合：
+					statusEl.textContent = '⚠️ Offline';
+					statusEl.className = 'text-red-500 font-medium text-xs transition-colors';
+					
+					// カード全体の枠線を赤く光らせ、ホバー時の青い光を無効化
+					linkEl.className = 'group block p-6 bg-[#111827]/10 backdrop-blur-md border border-red-950/40 rounded-2xl transition-all duration-300 shadow-[0_0_30px_-10px_rgba(239,68,68,0.1)]';
+					
+					// クリックしてもページ移動しないように制限
+					linkEl.addEventListener('click', (e) => e.preventDefault());
+				}
+			}
+
+			// ページ読み込み完了時に2つの自宅サーバーをチェック
+			window.addEventListener('DOMContentLoaded', () => {
+				checkServerStatus('https://blog.irulog.me', 'blog-link', 'blog-status', 'WordPress ↗');
+				checkServerStatus('https://note.irulog.me', 'note-link', 'note-status', 'Grav ↗');
+			});
+		</script>
 
 	</body>
 </html>
